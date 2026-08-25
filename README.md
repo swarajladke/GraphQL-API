@@ -201,7 +201,7 @@ One extra row is over-fetched (`take: first + 1`) to compute `hasNextPage` witho
 
 ## Tests
 
-All tests are **DB-backed integration tests**: they run real operations through the real schema and resolvers against real Postgres, skipping only the HTTP layer. Unit-testing the overlap maths alone would pass happily while the SQL predicate was wrong.
+70 tests across 6 DB-backed suites: they run real operations through the real schema and resolvers against real Postgres, skipping only the HTTP layer. Unit-testing the overlap maths alone would pass happily while the SQL predicate was wrong.
 
 ```
 tests/overlap.test.ts       every geometric overlap case, back-to-back, 1ms overlap,
@@ -223,6 +223,17 @@ Two highlights worth pointing at in review:
 * **`tests/overlap.test.ts` → "the exclusion constraint blocks a raw SQL overlap too"** — inserts an overlapping row via raw SQL, bypassing every application check. If that insert succeeded, the guarantee would only be a convention.
 
 Each test truncates with `TRUNCATE … CASCADE`. `scripts/prepare-test-db.ts` refuses to run against a database whose name doesn't end in `_test`.
+
+### Verifying the invariants
+
+Every core guarantee has been tested against negative mutations (sabotage tests) to confirm that the suite catches real invariant violations:
+
+| Invariant under test | Sabotage performed | Result |
+| --- | --- | --- |
+| **Half-open interval bounds** | Changed `startTime: { lt }` to `lte` in conflict queries | `tests/overlap.test.ts` fails back-to-back slot filling |
+| **Concurrency & exclusion** | Dropped `bookings_no_overlap` constraint + removed advisory lock | `tests/concurrency.test.ts` fails (multiple winners in 20-way race) |
+| **Partial constraint (slot reuse)** | Recreated `bookings_no_overlap` without `WHERE (status = 'CONFIRMED')` | `tests/cancellation.test.ts` fails (cancelled slots cannot be re-booked) |
+| **Reschedule self-exclusion** | Removed `id: { not: excludeBookingId }` filter | `tests/reschedule.test.ts` fails (booking conflicts with itself on extend/shift) |
 
 ---
 
