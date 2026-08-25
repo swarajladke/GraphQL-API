@@ -1,0 +1,31 @@
+{
+  "name": "room-booking-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Room & shared-resource booking GraphQL API (Bun + GraphQL Yoga + Prisma + PostgreSQL)",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "db:up": "docker compose up -d && bun run scripts/wait-for-db.ts",
+    "db:down": "docker compose down -v",
+    "prisma:generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "bun run prisma/seed.ts",
+    "test": "bun run scripts/prepare-test-db.ts && bun test",
+    "test:only": "bun test"
+  },
+  "dependencies": {
+    "@graphql-tools/schema": "^10.0.6",
+    "@prisma/client": "^6.2.1",
+    "graphql": "^16.10.0",
+    "graphql-yoga": "^5.10.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.14",
+    "prisma": "^6.2.1",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,170 @@
+"""
+An ISO-8601 instant, e.g. `2026-09-01T10:00:00.000Z`.
+Always serialised in UTC. Inputs must carry an explicit offset or `Z`.
+"""
+scalar DateTime
+
+enum BookingStatus {
+  """Occupies the resource and blocks overlapping bookings."""
+  CONFIRMED
+  """Retained for history, but frees the time slot for re-booking."""
+  CANCELLED
+}
+
+"""A bookable shared resource: a meeting room, a desk, a projector."""
+type Resource {
+  id: ID!
+  name: String!
+  capacity: Int!
+  createdAt: DateTime!
+
+  """
+  Bookings for this resource, ordered by `startTime` ascending.
+  Defaults to CONFIRMED bookings only; pass `filter.status: null` explicitly
+  via the `bookings` root query if you need every status.
+  """
+  bookings(filter: ResourceBookingFilter, first: Int, after: String): BookingConnection!
+}
+
+"""A reservation of a resource over the half-open interval [startTime, endTime)."""
+type Booking {
+  id: ID!
+  resource: Resource!
+  title: String!
+  startTime: DateTime!
+  endTime: DateTime!
+  status: BookingStatus!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""Filter for the `bookings` root query."""
+input BookingFilter {
+  resourceId: ID
+  status: BookingStatus
+  """Only bookings that overlap [from, to). Either bound may be omitted."""
+  from: DateTime
+  to: DateTime
+}
+
+"""Filter for `Resource.bookings` (the resource is already implied)."""
+input ResourceBookingFilter {
+  status: BookingStatus
+  from: DateTime
+  to: DateTime
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type BookingEdge {
+  """Opaque keyset cursor encoding (startTime, id)."""
+  cursor: String!
+  node: Booking!
+}
+
+type BookingConnection {
+  edges: [BookingEdge!]!
+  """Convenience flattening of `edges { node }`."""
+  nodes: [Booking!]!
+  pageInfo: PageInfo!
+  """Total rows matching the filter, ignoring pagination. Costs an extra COUNT."""
+  totalCount: Int!
+}
+
+type ResourceEdge {
+  cursor: String!
+  node: Resource!
+}
+
+type ResourceConnection {
+  edges: [ResourceEdge!]!
+  nodes: [Resource!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""A contiguous window of time with no confirmed booking on it."""
+type TimeSlot {
+  startTime: DateTime!
+  endTime: DateTime!
+}
+
+"""The answer to "can I book this resource for this window?" """
+type Availability {
+  resource: Resource!
+  from: DateTime!
+  to: DateTime!
+  """True when no confirmed booking overlaps [from, to)."""
+  isAvailable: Boolean!
+  """The confirmed bookings that overlap the window, ordered by startTime."""
+  conflicts: [Booking!]!
+  """Gaps inside [from, to) that are bookable, ordered by startTime."""
+  freeSlots: [TimeSlot!]!
+}
+
+input CreateResourceInput {
+  name: String!
+  capacity: Int!
+}
+
+input CreateBookingInput {
+  resourceId: ID!
+  title: String!
+  startTime: DateTime!
+  endTime: DateTime!
+}
+
+input RescheduleBookingInput {
+  id: ID!
+  startTime: DateTime!
+  endTime: DateTime!
+}
+
+type DeleteBookingResult {
+  id: ID!
+  deleted: Boolean!
+}
+
+type Query {
+  """All resources, ordered by createdAt ascending."""
+  resources(first: Int, after: String): ResourceConnection!
+
+  """A single resource by id. Null when it does not exist."""
+  resource(id: ID!): Resource
+
+  """Bookings across all resources, filterable, ordered by startTime ascending."""
+  bookings(filter: BookingFilter, first: Int, after: String): BookingConnection!
+
+  """A single booking by id. Null when it does not exist."""
+  booking(id: ID!): Booking
+
+  """Check whether a resource is free over [from, to) and show the gaps."""
+  availability(resourceId: ID!, from: DateTime!, to: DateTime!): Availability!
+}
+
+type Mutation {
+  createResource(input: CreateResourceInput!): Resource!
+
+  """
+  Create a CONFIRMED booking. Fails with `BOOKING_CONFLICT` if any confirmed
+  booking on the same resource overlaps [startTime, endTime).
+  """
+  createBooking(input: CreateBookingInput!): Booking!
+
+  """
+  Move a booking to a new window. Re-runs the conflict check, ignoring the
+  booking being moved so it never conflicts with itself.
+  """
+  rescheduleBooking(input: RescheduleBookingInput!): Booking!
+
+  """Set status to CANCELLED, freeing the slot. Idempotent."""
+  cancelBooking(id: ID!): Booking!
+
+  """Permanently remove a booking row."""
+  deleteBooking(id: ID!): DeleteBookingResult!
+}

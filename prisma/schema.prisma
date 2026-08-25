@@ -1,0 +1,58 @@
+// Prisma schema for the Room Booking API.
+//
+// Design notes
+// ------------
+// * Times are stored as `timestamptz(3)` — always absolute instants, never
+//   "wall clock" times. All comparisons therefore happen in UTC.
+// * The *real* no-overlap guarantee is a PostgreSQL `EXCLUDE USING gist`
+//   constraint. Prisma cannot express exclusion constraints, so it lives in
+//   `migrations/20260825120000_init/migration.sql`.
+// * Indexes are tuned for the two hot paths: conflict detection
+//   (resource + status + startTime) and cursor pagination (startTime, id).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model Resource {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @db.VarChar(120)
+  capacity  Int
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  bookings  Booking[]
+
+  @@unique([name], map: "resources_name_key")
+  @@index([createdAt, id], map: "resources_created_at_id_idx")
+  @@map("resources")
+}
+
+model Booking {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resourceId String        @map("resource_id") @db.Uuid
+  title      String        @db.VarChar(200)
+  startTime  DateTime      @map("start_time") @db.Timestamptz(3)
+  endTime    DateTime      @map("end_time") @db.Timestamptz(3)
+  status     BookingStatus @default(CONFIRMED)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  // Conflict detection: "confirmed bookings for this resource near this time".
+  @@index([resourceId, status, startTime], map: "bookings_resource_status_start_idx")
+  // Cursor pagination keyset: ORDER BY start_time, id.
+  @@index([startTime, id], map: "bookings_start_time_id_idx")
+  // Per-resource timeline reads.
+  @@index([resourceId, startTime], map: "bookings_resource_start_idx")
+  @@map("bookings")
+}

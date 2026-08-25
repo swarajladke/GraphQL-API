@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.test
+.env.local
+dist/
+*.log
+.DS_Store
+bun.lockb.bak
+coverage/
