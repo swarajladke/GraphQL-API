@@ -91,7 +91,7 @@ Prisma can't express exclusion constraints, so it's a hand-written migration. `t
 
 ## 4. Rescheduling — the self-conflict trap
 
-`rescheduleBooking` runs the *identical* conflict query as `createBooking`, plus one clause: `id != <booking being moved>`.
+`rescheduleBooking` runs the *identical* conflict query as `createBooking`, plus one clause: `id != excludeBookingId`.
 
 Without it, extending `10:00–11:00` to `10:00–12:00` collides with its own current row and the API rejects a perfectly valid edit. It's a one-line bug with a very confusing symptom, so it has dedicated tests: extend, shift-by-30-minutes, and reschedule-to-the-identical-window.
 
@@ -105,7 +105,7 @@ Other decisions here:
 
 ## 5. Pagination and indexing
 
-Keyset pagination ordered by `(startTime, id)`, cursors are opaque base64url of `<iso>|<uuid>`.
+Keyset pagination ordered by `(startTime, id)`, cursors are opaque base64url of `startTime | id`.
 
 Why not `OFFSET`:
 

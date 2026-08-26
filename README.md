@@ -33,10 +33,6 @@ bun run dev      # http://localhost:4000/graphql (GraphiQL enabled)
 Run the tests (applies migrations to `booking_test`, then runs the suite):
 
 ```bash
-bun test:setup 2>/dev/null || bun run test
-```
-
-```bash
 bun run test        # prepare test DB + run everything
 bun run typecheck   # tsc --noEmit, strict
 ```
@@ -159,7 +155,7 @@ query {
 
 ## Rescheduling
 
-`rescheduleBooking` runs the *same* conflict query as `createBooking` with one addition: `id != <the booking being moved>`. Without that exclusion, extending `10:00–11:00` to `10:00–12:00` would collide with its own current row — the classic reschedule bug. Covered by `tests/reschedule.test.ts`.
+`rescheduleBooking` runs the *same* conflict query as `createBooking` with one addition: `id != excludeBookingId`. Without that exclusion, extending `10:00–11:00` to `10:00–12:00` would collide with its own current row — the classic reschedule bug. Covered by `tests/reschedule.test.ts`.
 
 Cancelled bookings cannot be rescheduled (`BAD_USER_INPUT`); create a new booking instead. A failed reschedule leaves the original window completely untouched, which is asserted explicitly.
 
@@ -167,7 +163,7 @@ Cancelled bookings cannot be rescheduled (`BAD_USER_INPUT`); create a new bookin
 
 ## Cursor pagination
 
-Keyset ("seek") pagination, ordered by `(startTime, id)`, with opaque base64url cursors encoding `<iso>|<uuid>`.
+Keyset ("seek") pagination, ordered by `(startTime, id)`, with opaque base64url cursors encoding `startTime | id`.
 
 Why not `OFFSET`?
 
