@@ -1,5 +1,7 @@
 # Room Booking GraphQL API
 
+[![CI](https://github.com/swarajladke/GraphQL-API/actions/workflows/ci.yml/badge.svg)](https://github.com/swarajladke/GraphQL-API/actions/workflows/ci.yml)
+
 A backend for reserving shared resources — meeting rooms, desks, projectors — built with **Bun + TypeScript (strict)**, **GraphQL Yoga** (schema-first), **Prisma** and **PostgreSQL**.
 
 The headline requirement: **two confirmed bookings for the same resource can never overlap**, while back-to-back bookings are allowed and cancelled slots are immediately reusable. That guarantee is enforced by the database, not by application convention.

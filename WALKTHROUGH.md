@@ -1,6 +1,6 @@
 # Walkthrough — Room Booking GraphQL API
 
-A written walkthrough of the implementation and the decisions behind it. It doubles as the script for the 5–10 minute video: the six sections below map to roughly one minute each.
+A written walkthrough of the implementation and the decisions behind it, submitted in place of a video. Six sections: the problem, the modelling decision, concurrency, rescheduling, pagination, and how it's tested.
 
 ---
 
